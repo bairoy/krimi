@@ -51,7 +51,7 @@ export default function Auth() {
       .select("*")
       .eq("id", user.id)
       .maybeSingle();
-
+    // checking there is existing profile or not
     if (!existingProfile) {
       const fallbackUsername =
         user.user_metadata?.username ?? user.email.split("@")[0];
