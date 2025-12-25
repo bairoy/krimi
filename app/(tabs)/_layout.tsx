@@ -1,35 +1,50 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import Header from "@/components/Header";
+import {Tabs} from "expo-router";
+import {ImageBackground,Image,Text,View} from "react-native";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
 
-  return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
+export default function TabsLayout(){
+  return(
+    <View style={{flex:1,backgroundColor:"black"}}>
+     <Header/>
+    <Tabs>
+      <Tabs.Screen 
+      name="index"
+      options={{
+        title:"dashboard",
+        headerShown:false,
+        
+      }} />
+      <Tabs.Screen 
+      name="Tasks"
+      options={{
+        title:"tasks",
+        headerShown:false,
+        
+      }}/>
+      <Tabs.Screen 
+      name="Notes"
+      options={{
+        title:"notes",
+        headerShown:false,
+        
+      }}/>
+      <Tabs.Screen 
+      name="Calendar"
+      options={{
+        title:"calendar",
+        headerShown:false,
+        
+      }}/>
+      <Tabs.Screen 
+      name="AIassistant"
+      options={{
+        title:"assistant",
+        headerShown:false,
+        
+      }}/>
     </Tabs>
-  );
+    </View>
+  )
 }
