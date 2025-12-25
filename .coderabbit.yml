@@ -1,15 +1,38 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: en
+early_access: false
+
 reviews:
-  auto_review: true
   high_level_summary: true
-  review_comments: true
+  review_status: true
+  poem: false
+  collapse_walkthrough: false
 
-paths:
-  ignore:
-    - node_modules
-    - dist
-    - .expo
-    - build
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
 
-language_settings:
-  typescript:
-    strict: true
+  path_filters:
+    - "!node_modules/**"
+    - "!dist/**"
+    - "!.expo/**"
+    - "!android/**"
+    - "!ios/**"
+
+  path_instructions:
+    - path: "**/*.{ts,tsx}"
+      instructions: |
+        Review this React Native (Expo) TypeScript code for:
+        - Correct React and React Native patterns
+        - Proper hook usage (useEffect, useCallback, useMemo)
+        - Avoiding unnecessary re-renders
+        - Clear component responsibility
+        - Safe async/await usage
+        - No console.log in production code
+        - Readable, maintainable structure
+
+chat:
+  auto_reply: true
