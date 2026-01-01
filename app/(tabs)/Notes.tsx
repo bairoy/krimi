@@ -1,16 +1,17 @@
 import {
   View,
   Text,
+  Keyboard,
+  FlatList,
+  Pressable,
+  TouchableOpacity,
   Modal,
   TextInput,
-  Pressable,
-  StyleSheet,
-  FlatList,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useState, useEffect,useCallback } from "react";
 import { supabase } from "@/servers/config/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
-import { Ionicons } from "@expo/vector-icons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 type Note = {
   id: string;
@@ -21,37 +22,27 @@ type Note = {
 
 export default function Notes() {
   const user = useAuthStore((state) => state.user);
-
   const [notes, setNotes] = useState<Note[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingNote, setEditingNote] = useState<Note | null>(null);
-
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [modalVisibility, setModalVisibility] = useState(false);
 
-  /* ================= FETCH NOTES ================= */
-
-  const fetchNotes = async () => {
+  const fetchNotes = useCallback(async () => {
     if (!user) return;
-
     const { data } = await supabase
       .from("notes")
       .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
+      .eq("user_id", user.id);
     if (data) setNotes(data);
-  };
-
+  },[user]);
   useEffect(() => {
-    if (user) fetchNotes();
-  }, [user]);
-
-  /* ================= REALTIME ================= */
+    if (!user) return;
+    fetchNotes();
+  }, [user,fetchNotes]);
 
   useEffect(() => {
     if (!user) return;
-
     const channel = supabase
       .channel(`notes-${user.id}`)
       .on(
@@ -59,21 +50,20 @@ export default function Notes() {
         {
           event: "*",
           schema: "public",
-          table: "notes",
-          filter: `user_id=eq.${user.id}`,
+          table:"notes",
+          filter:`user_id=eq.${user.id}`
         },
         fetchNotes
       )
       .subscribe();
 
-    return () =>{supabase.removeChannel(channel)} ;
-  }, [user]);
-
-  /* ================= SAVE / UPDATE ================= */
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user,fetchNotes]);
 
   const saveNote = async () => {
-    if (!user || !title.trim()) return;
-
+    if (!user || !title) return;
     if (editingNote) {
       await supabase
         .from("notes")
@@ -90,201 +80,105 @@ export default function Notes() {
         content,
       });
     }
-
     closeModal();
   };
-
   const deleteNote = async (id: string) => {
     await supabase.from("notes").delete().eq("id", id);
   };
-
-  /* ================= MODAL CONTROL ================= */
-
   const openAddModal = () => {
-    setEditingNote(null);
-    setTitle("");
+    setModalVisibility(true);
     setContent("");
-    setModalVisible(true);
+    setTitle("");
+    setEditingNote(null);
   };
-
-  const openEditModal = (note: Note) => {
-    setEditingNote(note);
-    setTitle(note.title);
-    setContent(note.content);
-    setModalVisible(true);
-  };
-
   const closeModal = () => {
-    setModalVisible(false);
-    setEditingNote(null);
-    setTitle("");
+    setModalVisibility(false);
+    Keyboard.dismiss();
     setContent("");
+    setTitle("");
+    setEditingNote(null);
   };
-
-  /* ================= UI ================= */
+  const openeditModal = (note: Note) => {
+    setModalVisibility(true);
+    setContent(note.content);
+    setTitle(note.title);
+    setEditingNote(note);
+  };
 
   if (!user) {
-    return (
-      <View style={styles.center}>
-        <Text style={{ color: "#fff" }}>Please login</Text>
-      </View>
-    );
+    return <View>please login to view your notes</View>;
   }
-
   return (
-    <View style={styles.container}>
-      {/* ===== NOTES LIST ===== */}
-      <FlatList
+    <View className="flex-1 bg-black relative ">
+      {!modalVisibility &&<FlatList
         data={notes}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No notes yet</Text>
-        }
         renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() => openEditModal(item)}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              {item.content ? (
-                <Text
-                  style={styles.cardContent}
-                  numberOfLines={3}
-                >
-                  {item.content}
-                </Text>
-              ) : null}
-            </View>
-
-            <Pressable onPress={() => deleteNote(item.id)}>
-              <Ionicons name="trash" size={20} color="#ef4444" />
+          <View className="pl-3  py-2  mt-3 flex-row gap-y-1 border-b-4 items-center justify-between bg-zinc-900 rounded-3xl">
+            <Pressable onPress={() => openeditModal(item)} className="w-80">
+              <Text className="text-orange-500 text-xl font-semibold">
+                {item.title}
+              </Text>
+              <Text className="text-white text-xl">{item.content}</Text>
             </Pressable>
-          </Pressable>
+            <TouchableOpacity
+              onPress={() => deleteNote(item.id)}
+            className="right-2">
+              <MaterialIcons name="delete-outline" size={30} color="red" />
+            </TouchableOpacity>
+          </View>
         )}
-      />
-
-      {/* ===== FAB ===== */}
-      <Pressable style={styles.fab} onPress={openAddModal}>
-        <Ionicons name="add" size={28} color="#000" />
-      </Pressable>
-
-      {/* ===== MODAL ===== */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>
-              {editingNote ? "Edit Note" : "New Note"}
-            </Text>
-
-            <TextInput
-              placeholder="Title"
-              placeholderTextColor="#777"
-              value={title}
-              onChangeText={setTitle}
-              style={styles.input}
-            />
-
-            <TextInput
-              placeholder="Write your thoughts..."
-              placeholderTextColor="#777"
-              value={content}
-              onChangeText={setContent}
-              style={[styles.input, { height: 160 }]}
-              multiline
-              textAlignVertical="top"
-            />
-
-            <View style={styles.row}>
-              <Pressable onPress={closeModal}>
-                <Text style={styles.cancel}>Cancel</Text>
-              </Pressable>
-              <Pressable onPress={saveNote}>
-                <Text style={styles.save}>
-                  {editingNote ? "Update" : "Save"}
-                </Text>
-              </Pressable>
-            </View>
+      />}
+      {!modalVisibility && (
+        <View className="relative bottom-2 z-1">
+          <TouchableOpacity
+            className="absolute right-0 bottom-0"
+            onPress={openAddModal}
+          >
+            <MaterialIcons name="library-add" size={50} color="#FF6D1F" />
+          </TouchableOpacity>
+        </View>
+      )}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisibility}
+        onRequestClose={() => setModalVisibility(!modalVisibility)}
+      >
+        <View className="m-auto bg-zinc-800 w-full border-white rounded-3xl">
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="title"
+            placeholderTextColor="white"
+            className="bg-zinc-900 border-zinc-400 h-20 m-2 rounded-2xl px-3 text-white text-lg"
+          />
+          <TextInput
+            value={content}
+            onChangeText={setContent}
+            placeholder="content"
+            placeholderTextColor="white"
+            multiline
+            className="bg-zinc-900 h-40 rounded-2xl m-2 px-3 text-white text-lg"
+          />
+          <View className="flex-row justify-around p-3">
+            <TouchableOpacity
+              onPress={() => closeModal()}
+              className="bg-yellow-300 h-10 w-20 rounded-md items-center justify-center"
+            >
+              <Text className="text-white">cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => saveNote()}
+              className="bg-green-600 h-10 w-20 rounded-md items-center justify-center "
+            >
+              <Text className="text-white">
+                {editingNote ? "update" : "save"}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
     </View>
   );
 }
-
-/* ================= STYLES ================= */
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0b0b0b" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
-  emptyText: {
-    textAlign: "center",
-    color: "#888",
-    marginTop: 20,
-  },
-
-  card: {
-    backgroundColor: "#141414",
-    borderRadius: 14,
-    padding: 14,
-    flexDirection: "row",
-    marginBottom: 12,
-  },
-  cardTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  cardContent: {
-    color: "#aaa",
-    marginTop: 6,
-    fontSize: 13,
-  },
-
-  fab: {
-    position: "absolute",
-    bottom: 24,
-    right: 24,
-    backgroundColor: "#f97316",
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 6,
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "flex-end",
-  },
-  modal: {
-    backgroundColor: "#141414",
-    padding: 20,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-  },
-  modalTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 10,
-    padding: 12,
-    color: "#fff",
-    marginBottom: 12,
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  cancel: { color: "#aaa", fontSize: 16 },
-  save: { color: "#f97316", fontSize: 16, fontWeight: "600" },
-});
