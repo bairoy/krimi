@@ -23,6 +23,7 @@ export default function Index() {
           }
 
           const data = await response.json();
+          
 
           if (Array.isArray(data) && data.length > 0) {
             setQuote(data[0].q);
