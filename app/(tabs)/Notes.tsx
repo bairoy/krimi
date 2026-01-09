@@ -27,9 +27,14 @@ export default function Notes() {
   const [content, setContent] = useState("");
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [modalVisibility, setModalVisibility] = useState(false);
+  
 
   const fetchNotes = useCallback(async () => {
     if (!user) return;
+    const {data:myaccesstoken}= await supabase.auth.getSession();
+    if (myaccesstoken){
+      console.log(myaccesstoken.session?.access_token);
+    }
     const { data } = await supabase
       .from("notes")
       .select("*")
